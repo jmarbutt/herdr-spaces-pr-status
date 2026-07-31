@@ -55,11 +55,11 @@ command = ["node", "bin/board.js"]
 
 # Opened as a split this is a desktop side panel; as a tab it is what herdr's
 # single-column mobile layout wants. The action picks via checksPlacement.
+# No width/height here: herdr only accepts those for popup placement.
 [[panes]]
 id = "checks"
 title = "Checks"
 placement = "split"
-width = "34%"
 command = ["node", "bin/checks.js"]
 
 # No [[link_handlers]] on purpose. Intercepting a clicked PR URL to show the
