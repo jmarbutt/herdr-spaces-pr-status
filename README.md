@@ -1,0 +1,238 @@
+# Spaces PR Status — a herdr plugin
+
+Puts GitHub pull request status on your herdr spaces, and adds a PR board
+grouped by where each branch actually stands.
+
+```
+▼ ● CoolFocus
+    main
+  ● WC-10202
+    wc-10202-compliance-studio…
+    🟢 #10110 · ✓ 28/28 · approved
+  ○ WC-10200
+    wc-10200-ultrasound-video…
+    🟣 #10105
+  ◐ WC-10195
+    wc-10195-allow-deleting…
+```
+
+The sidebar already tells you what your agents are doing. It says nothing about
+where the branch stands on GitHub, so you end up alt-tabbing to check. This puts
+open / checks running / checks failed / approved / merged next to the branch, and
+adds a board when you want the whole picture at once.
+
+## Requirements
+
+- **herdr ≥ 0.7.4**
+- **[`gh`](https://cli.github.com)**, authenticated (`gh auth status`). The plugin
+  shells out to it, so it inherits your existing credentials.
+- **Node.js ≥ 20.** No npm dependencies — nothing to install, no build step.
+- GitHub only. GitLab and Bitbucket are not supported.
+
+## Install
+
+```bash
+herdr plugin install jmarbutt/herdr-spaces-pr-status
+```
+
+Then add the token rows to `~/.config/herdr/config.toml`. **This part is
+required** — without it the plugin reports status that nothing renders:
+
+```toml
+[ui.sidebar.spaces]
+rows = [
+  ["state_icon", "workspace"],
+  ["branch", "git_status"],
+  ["$pr", "$pr_checks", "$pr_review"],
+]
+```
+
+```bash
+herdr server reload-config
+```
+
+A row disappears entirely when none of its tokens have a value, so spaces
+without a pull request cost no extra height.
+
+The plugin starts polling on the next herdr server start. To see it immediately:
+
+```bash
+herdr plugin action invoke jmarbutt.spaces-pr-status.refresh
+```
+
+## Tokens
+
+| Token | Example | Notes |
+|---|---|---|
+| `$pr` | `🟢 #10110` | State glyph and PR number |
+| `$pr_checks` | `✓ 28/28`, `✗ 2/14`, `⏳ 5/13` | Hidden once merged or closed |
+| `$pr_review` | `approved`, `changes req`, `review req` | Hidden once merged or closed |
+| `$pr_diff` | `+914 -46` | Not in the recommended rows; add it if you want it |
+
+State glyphs, `emoji` (default) and `compact`:
+
+| State | emoji | compact |
+|---|---|---|
+| Open, checks green | 🟢 | ● |
+| Checks running | 🟡 | ◐ |
+| Checks failed | 🔴 | ⊗ |
+| Draft | ⚪ | ◌ |
+| Merged | 🟣 | ◆ |
+| Closed | ⚫ | ⊘ |
+
+herdr strips control characters from token values, so a token cannot carry
+colour of its own — that is why colour comes from emoji. Emoji are double-width
+though: on a default 26-column sidebar each glyph costs two cells the branch name
+wanted. Set `"style": "compact"` for single-width shapes, or widen the sidebar:
+
+```toml
+[ui]
+sidebar_max_width = 36
+```
+
+Check counts exclude skipped and cancelled checks. A repo that skips 20 of 43
+workflows per PR reads as `✓ 23/23`, not `23/43`.
+
+## Board
+
+```bash
+herdr plugin action invoke jmarbutt.spaces-pr-status.board
+```
+
+```
+ Pull requests                                            7 spaces
+
+ Checks failing                                                 1
+   🔴 WC-10207       #10112                            +42 -74
+ In review                                                      1
+   🟢 WC-10202       #10110      approved             +914 -46
+ Merged                                                         2
+   🟣 WC-10200       #10105                            +173 -5
+   🟣 WC-10203       #10109                           +489 -11
+ No pull request                                                4
+      planner
+      WC-10192
+
+ ↑↓ move · enter focus space · o open PR · r refresh · q quit
+```
+
+Groups with nothing in them are omitted. The board renders from cached state so
+it opens instantly, then `r` refreshes.
+
+## Keybindings
+
+```toml
+[[keys.command]]
+key = "prefix+ctrl+p"
+type = "plugin_action"
+command = "jmarbutt.spaces-pr-status.board"
+description = "PR board"
+
+[[keys.command]]
+key = "prefix+ctrl+o"
+type = "plugin_action"
+command = "jmarbutt.spaces-pr-status.open"
+description = "open this space's PR"
+```
+
+Actions: `refresh` (re-query everything, ignoring caches), `open` (open the
+focused space's PR in a browser), `board`.
+
+## Configure
+
+`config.json` in the plugin config dir
+(`herdr plugin config-dir jmarbutt.spaces-pr-status`). Every key is optional;
+the plugin works with no config file at all.
+
+```json
+{
+  "pollSeconds": 90,
+  "style": "emoji",
+  "skipDefaultBranch": true,
+  "repos": null,
+  "notify": ["checks_failed", "review"],
+  "noPrCacheSeconds": 180,
+  "terminalCacheMinutes": 1440,
+  "openPrLimit": 100,
+  "ghPath": "gh"
+}
+```
+
+- `pollSeconds` — refresh interval, clamped to 15–3600. herdr events (new
+  worktree, new space) trigger an immediate refresh regardless.
+- `style` — `emoji` or `compact`.
+- `skipDefaultBranch` — leave the trunk space alone. A permanent "no PR" on
+  `main` is noise. Falls back to `main`/`master` when `origin/HEAD` is unset.
+- `repos` — allowlist like `["waycool/CoolFocus"]`. `null` means every repo.
+- `notify` — any of `checks_failed`, `review`, `merged`. `[]` disables toasts.
+- `noPrCacheSeconds` / `terminalCacheMinutes` — how long a "no PR" and a
+  merged/closed result stay cached. Open PRs are never cached: their checks and
+  review are exactly what changes between polls.
+- `openPrLimit` — how many open PRs to fetch per repo in the batch query.
+
+### API usage
+
+One `gh pr list` call per repo per cycle covers every open PR. Branches that
+miss that list get one targeted query each, then are cached — merged and closed
+results for a day, "no PR" for three minutes. Nine spaces across one repo settles
+at roughly one call every 90 seconds.
+
+## Notifications
+
+A toast fires only when both cycles saw the same PR on the same space and
+something crossed a line: checks went red, a review decision landed, or the PR
+merged. Opening a PR, losing one, and recovering from red are all silent. The
+first cycle after a restart never notifies — otherwise every restart would toast
+everything you already knew about.
+
+## How it works
+
+- `session.snapshot` lists spaces. Worktree spaces carry a checkout path; plain
+  spaces fall back to their first pane's cwd, which is what lets an ordinary repo
+  checkout show status too.
+- `git rev-parse` and `git remote get-url` give branch and repo.
+- `gh pr list` gives the PRs.
+- `workspace.report_metadata` writes the tokens, which
+  `[ui.sidebar.spaces] rows` renders.
+
+Tokens carry a TTL of four poll intervals. If the poller dies, its status expires
+and the sidebar goes blank rather than showing something stale and wrong.
+
+A `[[startup]]` hook launches the poller on server start and after a live
+handoff, and a `worktree.created` hook re-checks it as a self-heal. herdr's
+startup hooks are one-shot by design, so the plugin supervises its own poller
+through a pid record keyed on the socket path.
+
+## Troubleshooting
+
+```bash
+herdr plugin log list --plugin jmarbutt.spaces-pr-status
+cat "$(herdr plugin config-dir jmarbutt.spaces-pr-status | sed 's#/config/#/state/#')/daemon.log"
+herdr workspace list | grep -o '"tokens":{[^}]*}'
+```
+
+**Nothing in the sidebar.** The `[ui.sidebar.spaces] rows` block is required;
+check `herdr config check`.
+
+**A space shows nothing.** Expected when the branch has no PR, the space is on
+the default branch, the remote is not GitHub, or the directory is not a git
+repo. `herdr plugin action invoke jmarbutt.spaces-pr-status.refresh` prints how
+many spaces resolved.
+
+**Status stopped updating.** The poller probably died; tokens expire on their
+own so the sidebar empties rather than lying. Restart it with a `refresh`
+invoke or a new herdr server. If a stale pid record is confusing it, delete
+`daemon.json` from the state dir.
+
+## Develop
+
+```bash
+herdr plugin link /path/to/herdr-spaces-pr-status
+npm test
+```
+
+No dependencies, so `npm install` is not needed. Tests are `node:test`.
+
+## Licence
+
+MIT

@@ -1,0 +1,11 @@
+{
+  "pollSeconds": 90,
+  "style": "emoji",
+  "skipDefaultBranch": true,
+  "repos": null,
+  "notify": ["checks_failed", "review"],
+  "noPrCacheSeconds": 180,
+  "terminalCacheMinutes": 1440,
+  "openPrLimit": 100,
+  "ghPath": "gh"
+}
