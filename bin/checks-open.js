@@ -21,11 +21,19 @@ const targetPaneId = focusedPaneId();
 // a tab rather than failing outright.
 const effective = PLACEMENTS_NEEDING_TARGET.has(placement) && !targetPaneId ? 'tab' : placement;
 
-const res = openPluginPane('checks', {
-  placement: effective,
-  direction: effective === 'split' ? 'right' : undefined,
-  targetPaneId,
-});
+function open(placement) {
+  return openPluginPane('checks', {
+    placement,
+    direction: placement === 'split' ? 'right' : undefined,
+    targetPaneId,
+  });
+}
+
+let res = open(effective);
+
+// A stale or closed target pane makes a split impossible. A tab always works,
+// and showing the checks somewhere beats refusing to show them at all.
+if (!res.ok && PLACEMENTS_NEEDING_TARGET.has(effective)) res = open('tab');
 
 if (!res.ok) {
   process.stderr.write(`spaces-pr-status: could not open checks: ${res.error}\n`);
