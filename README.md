@@ -119,6 +119,58 @@ herdr plugin action invoke jmarbutt.spaces-pr-status.board
 Groups with nothing in them are omitted. The board renders from cached state so
 it opens instantly, then `r` refreshes.
 
+## Checks panel
+
+The sidebar tells you *that* checks are failing. This tells you *which*.
+
+```bash
+herdr plugin action invoke jmarbutt.spaces-pr-status.checks
+```
+
+```
+ WC-10207
+ 🟡 #10112  +372 -2
+ WC-10207: Catalog: Reports module…
+
+ Failed 1
+ 🔴 PR Gate / .NET Build         3m
+ Running 2
+ 🟡 Validate Entity Sync
+ 🟡 Vercel – coolfocus
+ Passed 6
+ 🟢 PR Gate / Detect Changes    15s
+ 🟢 PR Gate / OpenAPI            6s
+ 🟢 PR Gate routing             10s
+ Skipped 1
+ ⚪ Detect env var changes
+
+ r refresh · o open · q close
+```
+
+It shows the focused space's PR, grouped by what you can act on rather than by
+provider — with a dozen checks the question is always "is anything broken, is
+anything still running", and provider grouping answers neither. It refreshes
+itself every 20 seconds while open, and costs one API call per refresh, only
+while open.
+
+`checksPlacement` decides where it lands:
+
+- `"split"` (default) — a side panel next to your work on desktop.
+- `"tab"` — a tab on the space. **This is the one for mobile**, where herdr
+  switches to a single-column layout below `mobile_width_threshold` and a split
+  has nowhere to go.
+- `"zoomed"` / `"overlay"` — full screen.
+
+Bind it to a key and it is one chord from anywhere:
+
+```toml
+[[keys.command]]
+key = "prefix+ctrl+k"
+type = "plugin_action"
+command = "jmarbutt.spaces-pr-status.checks"
+description = "this space's checks"
+```
+
 ## Keybindings
 
 ```toml
@@ -136,7 +188,7 @@ description = "open this space's PR"
 ```
 
 Actions: `refresh` (re-query everything, ignoring caches), `open` (open the
-focused space's PR in a browser), `board`.
+focused space's PR in a browser), `board`, `checks`.
 
 ## Configure
 
@@ -169,6 +221,10 @@ the plugin works with no config file at all.
   merged/closed result stay cached. Open PRs are never cached: their checks and
   review are exactly what changes between polls.
 - `openPrLimit` — how many open PRs to fetch per repo in the batch query.
+- `checksPlacement` — `split`, `tab`, `zoomed` or `overlay` for the checks
+  panel. Use `tab` on mobile.
+- `checksRefreshSeconds` — how often the checks panel re-reads GitHub while it
+  is open, 5–600.
 
 ### API usage
 

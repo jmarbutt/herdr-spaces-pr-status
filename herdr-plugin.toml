@@ -38,6 +38,13 @@ description = "Show every space grouped by pull request state"
 contexts = ["workspace", "tab", "pane"]
 command = ["node", "bin/board-open.js"]
 
+[[actions]]
+id = "checks"
+title = "This space's checks"
+description = "Show the focused space's pull request checks in a side panel or tab"
+contexts = ["workspace", "tab", "pane"]
+command = ["node", "bin/checks-open.js"]
+
 [[panes]]
 id = "board"
 title = "Pull requests"
@@ -45,6 +52,15 @@ placement = "popup"
 width = "70%"
 height = "70%"
 command = ["node", "bin/board.js"]
+
+# Opened as a split this is a desktop side panel; as a tab it is what herdr's
+# single-column mobile layout wants. The action picks via checksPlacement.
+[[panes]]
+id = "checks"
+title = "Checks"
+placement = "split"
+width = "34%"
+command = ["node", "bin/checks.js"]
 
 # No [[link_handlers]] on purpose. Intercepting a clicked PR URL to show the
 # board would be worse than herdr's default of just opening the PR.
