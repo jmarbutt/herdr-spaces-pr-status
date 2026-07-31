@@ -90,6 +90,10 @@ wanted. Set `"style": "compact"` for single-width shapes, or widen the sidebar:
 sidebar_max_width = 36
 ```
 
+A full `glyph · #number · checks · review` row is around 32 columns, so it
+truncates at the default 26. herdr auto-scales, so raising the maximum does not
+force every space wide.
+
 Check counts exclude skipped and cancelled checks. A repo that skips 20 of 43
 workflows per PR reads as `✓ 23/23`, not `23/43`.
 
@@ -161,34 +165,54 @@ while open.
   has nowhere to go.
 - `"zoomed"` / `"overlay"` — full screen.
 
-Bind it to a key and it is one chord from anywhere:
-
-```toml
-[[keys.command]]
-key = "prefix+ctrl+k"
-type = "plugin_action"
-command = "jmarbutt.spaces-pr-status.checks"
-description = "this space's checks"
-```
+See [Keybindings](#keybindings) to put it one chord away.
 
 ## Keybindings
 
+herdr already uses the unshifted `prefix+c`, `prefix+b`, `prefix+o` and
+`prefix+r` (new tab, sidebar, notification, resize). These shift variants are
+free in a stock herdr, so they collide with nothing:
+
 ```toml
 [[keys.command]]
-key = "prefix+ctrl+p"
+key = "prefix+shift+c"
+type = "plugin_action"
+command = "jmarbutt.spaces-pr-status.checks"
+description = "this space's checks"
+
+[[keys.command]]
+key = "prefix+shift+b"
 type = "plugin_action"
 command = "jmarbutt.spaces-pr-status.board"
 description = "PR board"
 
 [[keys.command]]
-key = "prefix+ctrl+o"
+key = "prefix+shift+o"
 type = "plugin_action"
 command = "jmarbutt.spaces-pr-status.open"
 description = "open this space's PR"
+
+[[keys.command]]
+key = "prefix+shift+f"
+type = "plugin_action"
+command = "jmarbutt.spaces-pr-status.refresh"
+description = "refresh PR status"
 ```
+
+With the default `ctrl+b` prefix that is `ctrl+b` then `Shift+C` for the checks
+panel, and so on. Function keys (`key = "f9"`) work too and need no prefix, but
+on macOS they only reach herdr when "Use F1–F12 as standard function keys" is
+on.
 
 Actions: `refresh` (re-query everything, ignoring caches), `open` (open the
 focused space's PR in a browser), `board`, `checks`.
+
+`herdr config check` validates the TOML but does not confirm an action id
+exists. To be sure a binding will fire, compare it against:
+
+```bash
+herdr plugin action list --plugin jmarbutt.spaces-pr-status
+```
 
 ## Configure
 
