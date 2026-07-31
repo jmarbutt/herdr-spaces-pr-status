@@ -230,7 +230,9 @@ the plugin works with no config file at all.
   "noPrCacheSeconds": 180,
   "terminalCacheMinutes": 1440,
   "openPrLimit": 100,
-  "ghPath": "gh"
+  "ghPath": "gh",
+  "checksPlacement": "split",
+  "checksRefreshSeconds": 20
 }
 ```
 
