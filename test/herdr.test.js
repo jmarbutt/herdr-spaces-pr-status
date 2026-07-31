@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { reportMetadata, showNotification, snapshot, focusWorkspace, SOURCE } from '../lib/herdr.js';
+import { reportMetadata, showNotification, snapshot, focusWorkspace, openPluginPane, SOURCE } from '../lib/herdr.js';
 
 const env = { HERDR_BIN_PATH: '/usr/local/bin/herdr' };
 
@@ -85,4 +85,27 @@ test('herdr commands go through HERDR_BIN_PATH when set', () => {
   assert.equal(calls[0].cmd, 'herdr');
   reportMetadata('w69', { pr: 'x' }, { env, exec });
   assert.equal(calls[1].cmd, '/usr/local/bin/herdr');
+});
+
+test('a split pane carries a target pane, because herdr rejects it otherwise', () => {
+  const { exec, calls } = recorder({ status: 0, stdout: '{}', stderr: '' });
+  openPluginPane('checks', { env, exec, placement: 'split', direction: 'right', targetPaneId: 'w6F:p1' });
+  const { args } = calls[0];
+  assert.equal(args[args.indexOf('--placement') + 1], 'split');
+  assert.equal(args[args.indexOf('--target-pane') + 1], 'w6F:p1');
+  assert.equal(args[args.indexOf('--direction') + 1], 'right');
+});
+
+test('a tab pane does not carry a target pane', () => {
+  const { exec, calls } = recorder({ status: 0, stdout: '{}', stderr: '' });
+  openPluginPane('checks', { env, exec, placement: 'tab', targetPaneId: 'w6F:p1' });
+  assert.ok(!calls[0].args.includes('--target-pane'));
+});
+
+test('the board omits placement entirely so the manifest popup applies', () => {
+  // The CLI's --placement enum does not list popup even though the manifest
+  // and socket API accept it, so passing it would break the board.
+  const { exec, calls } = recorder({ status: 0, stdout: '{}', stderr: '' });
+  openPluginPane('board', { env, exec });
+  assert.ok(!calls[0].args.includes('--placement'));
 });
