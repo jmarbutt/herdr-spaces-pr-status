@@ -30,10 +30,10 @@ test('loadConfig returns defaults rather than throwing on malformed JSON', () =>
 });
 
 test('loadConfig merges user values over defaults', () => {
-  withConfigDir(JSON.stringify({ pollSeconds: 30, style: 'compact' }), (dir) => {
+  withConfigDir(JSON.stringify({ pollSeconds: 30, style: 'emoji' }), (dir) => {
     const cfg = loadConfig(dir);
     assert.equal(cfg.pollSeconds, 30);
-    assert.equal(cfg.style, 'compact');
+    assert.equal(cfg.style, 'emoji');
     assert.equal(cfg.skipDefaultBranch, DEFAULTS.skipDefaultBranch);
   });
 });

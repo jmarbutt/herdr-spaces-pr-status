@@ -8,12 +8,13 @@ grouped by where each branch actually stands.
     main
   ● WC-10202
     wc-10202-compliance-studio…
-    🟢 #10110 · ✓ 28/28 · approved
+    ● #10110 · ✓ 28/28 · approved
   ○ WC-10200
     wc-10200-ultrasound-video…
-    🟣 #10105
+    ◆ #10105
   ◐ WC-10195
     wc-10195-allow-deleting…
+    ⊗ #10125 · ✗ 1/26
 ```
 
 The sidebar already tells you what your agents are doing. It says nothing about
@@ -64,26 +65,29 @@ herdr plugin action invoke jmarbutt.spaces-pr-status.refresh
 
 | Token | Example | Notes |
 |---|---|---|
-| `$pr` | `🟢 #10110` | State glyph and PR number |
-| `$pr_checks` | `✓ 28/28`, `✗ 2/14`, `⏳ 5/13` | Hidden once merged or closed |
+| `$pr` | `● #10110` | State glyph and PR number |
+| `$pr_checks` | `✓ 28/28`, `✗ 2/14`, `… 5/13` | Hidden once merged or closed |
 | `$pr_review` | `approved`, `changes req`, `review req` | Hidden once merged or closed |
 | `$pr_diff` | `+914 -46` | Not in the recommended rows; add it if you want it |
 
-State glyphs, `emoji` (default) and `compact`:
+State glyphs, `compact` (default) and `emoji`:
 
-| State | emoji | compact |
+| State | compact | emoji |
 |---|---|---|
-| Open, checks green | 🟢 | ● |
-| Checks running | 🟡 | ◐ |
-| Checks failed | 🔴 | ⊗ |
-| Draft | ⚪ | ◌ |
-| Merged | 🟣 | ◆ |
-| Closed | ⚫ | ⊘ |
+| Open, checks green | ● | 🟢 |
+| Checks running | ◐ | 🟡 |
+| Checks failed | ⊗ | 🔴 |
+| Draft | ◌ | ⚪ |
+| Merged | ◆ | 🟣 |
+| Closed | ⊘ | ⚫ |
 
-herdr strips control characters from token values, so a token cannot carry
-colour of its own — that is why colour comes from emoji. Emoji are double-width
-though: on a default 26-column sidebar each glyph costs two cells the branch name
-wanted. Set `"style": "compact"` for single-width shapes, or widen the sidebar:
+`compact` is the default because herdr draws a space's own state as a
+single-width `○`/`●` in the same row, and double-width emoji beside those read
+as oversized. Colour is the trade: herdr strips control characters from token
+values, so a token cannot carry colour of its own, and shape has to do the work.
+
+Set `"style": "emoji"` if you would rather have colour. Emoji cost two cells per
+glyph, so widen the sidebar to go with it:
 
 ```toml
 [ui]
@@ -223,7 +227,7 @@ the plugin works with no config file at all.
 ```json
 {
   "pollSeconds": 90,
-  "style": "emoji",
+  "style": "compact",
   "skipDefaultBranch": true,
   "repos": null,
   "notify": ["checks_failed", "review"],
@@ -238,7 +242,7 @@ the plugin works with no config file at all.
 
 - `pollSeconds` — refresh interval, clamped to 15–3600. herdr events (new
   worktree, new space) trigger an immediate refresh regardless.
-- `style` — `emoji` or `compact`.
+- `style` — `compact` (default, single-width shapes) or `emoji` (colour, double-width).
 - `skipDefaultBranch` — leave the trunk space alone. A permanent "no PR" on
   `main` is noise. Falls back to `main`/`master` when `origin/HEAD` is unset.
 - `repos` — allowlist like `["waycool/CoolFocus"]`. `null` means every repo.

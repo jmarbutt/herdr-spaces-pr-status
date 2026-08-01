@@ -1,9 +1,12 @@
 {
   "pollSeconds": 90,
-  "style": "emoji",
+  "style": "compact",
   "skipDefaultBranch": true,
   "repos": null,
-  "notify": ["checks_failed", "review"],
+  "notify": [
+    "checks_failed",
+    "review"
+  ],
   "noPrCacheSeconds": 180,
   "terminalCacheMinutes": 1440,
   "openPrLimit": 100,

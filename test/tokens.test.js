@@ -29,8 +29,11 @@ test('stateGlyph falls back to the open glyph for an unknown state', () => {
   assert.equal(stateGlyph('nonsense', 'emoji'), stateGlyph('open', 'emoji'));
 });
 
-test('stateGlyph defaults to emoji for an unknown style', () => {
-  assert.equal(stateGlyph('merged', 'klingon'), stateGlyph('merged', 'emoji'));
+test('stateGlyph defaults to compact for an unknown style', () => {
+  // compact is the default because emoji beside herdr's single-width state
+  // icons read as oversized.
+  assert.equal(stateGlyph('merged', 'klingon'), stateGlyph('merged', 'compact'));
+  assert.equal(stateGlyph('merged', undefined), stateGlyph('merged', 'compact'));
 });
 
 test('checksToken reports failures as failed-over-relevant', () => {
