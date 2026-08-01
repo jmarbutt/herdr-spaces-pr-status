@@ -11,7 +11,7 @@ grouped by where each branch actually stands.
     ● #10110 · ✓ 28/28 · approved
   ○ WC-10200
     wc-10200-ultrasound-video…
-    ◆ #10105
+    ◆ #10105 MERGED
   ◐ WC-10195
     wc-10195-allow-deleting…
     ⊗ #10125 · ✗ 1/26
@@ -65,7 +65,7 @@ herdr plugin action invoke jmarbutt.spaces-pr-status.refresh
 
 | Token | Example | Notes |
 |---|---|---|
-| `$pr` | `● #10110` | State glyph and PR number |
+| `$pr` | `● #10110`, `◆ #10129 MERGED` | State glyph and PR number; merged, closed and draft also carry a word |
 | `$pr_checks` | `✓ 28/28`, `✗ 2/14`, `… 5/13` | Hidden once merged or closed |
 | `$pr_review` | `approved`, `changes req`, `review req` | Hidden once merged or closed |
 | `$pr_diff` | `+914 -46` | Not in the recommended rows; add it if you want it |
@@ -80,6 +80,10 @@ State glyphs, `compact` (default) and `emoji`:
 | Draft | ◌ | ⚪ |
 | Merged | ◆ | 🟣 |
 | Closed | ⊘ | ⚫ |
+
+Merged, closed and draft PRs also carry a word — `◆ #10129 MERGED`. The active
+states do not, because their check counts already say what is going on; a lone
+`◆` is a shape you have to remember.
 
 `compact` is the default because herdr draws a space's own state as a
 single-width `○`/`●` in the same row, and double-width emoji beside those read

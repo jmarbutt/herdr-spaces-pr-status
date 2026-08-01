@@ -133,3 +133,26 @@ test('token values contain no control characters', () => {
 test('token keys match the documented names so config rows stay stable', () => {
   assert.deepEqual([...TOKEN_KEYS], ['pr', 'pr_checks', 'pr_review', 'pr_diff']);
 });
+
+test('a merged PR says so, because the glyph alone does not', () => {
+  const t = prTokens(pr({ state: 'MERGED', rolled: 'merged' }), 'compact');
+  assert.match(t.pr, /#10204 MERGED$/);
+});
+
+test('closed and draft are labelled too, for the same reason', () => {
+  assert.match(prTokens(pr({ state: 'CLOSED', rolled: 'closed' }), 'compact').pr, /#10204 CLOSED$/);
+  assert.match(prTokens(pr({ isDraft: true, rolled: 'draft' }), 'compact').pr, /#10204 DRAFT$/);
+});
+
+test('active states carry no label, because the checks token already explains them', () => {
+  // "● #10110 · ✓ 28/28" needs no word; "◆ #10105" does.
+  for (const rolled of ['open', 'checks_failed', 'checks_pending']) {
+    assert.match(prTokens(pr({ rolled }), 'compact').pr, /^\S+ #10204$/);
+  }
+});
+
+test('labels appear in both styles', () => {
+  for (const style of ['emoji', 'compact']) {
+    assert.match(prTokens(pr({ state: 'MERGED', rolled: 'merged' }), style).pr, /MERGED/);
+  }
+});

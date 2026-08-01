@@ -172,3 +172,9 @@ test('every check row ends in the same column regardless of glyph', () => {
     assert.equal(widths.size, 1, `${style} rows ragged: ${[...widths].join(',')}`);
   }
 });
+
+test('the checks panel header labels a merged PR the same way the sidebar does', () => {
+  const merged = { ...pr, rolled: 'merged' };
+  assert.match(renderChecksPlain({ space, pr: merged, checks: [], width: 40 }), /#10112 MERGED/);
+  assert.match(renderChecksPlain({ space, pr, checks: [], width: 40 }), /#10112 {2}\+/);
+});
