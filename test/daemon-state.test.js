@@ -10,6 +10,7 @@ import {
   daemonFile,
   isAlive,
   daemonAction,
+  sessionStateDir,
 } from '../lib/daemon-state.js';
 
 function withDir(fn) {
@@ -108,6 +109,22 @@ const dead = () => {
   err.code = 'ESRCH';
   throw err;
 };
+
+test('sessionStateDir namespaces per socket so sessions never share state', () => {
+  const dir = '/tmp/prstatus-state';
+  const a = sessionStateDir(dir, SOCK);
+  const b = sessionStateDir(dir, OTHER_SOCK);
+  assert.equal(a.startsWith(dir + '/'), true);
+  assert.notEqual(a, b);
+  assert.equal(sessionStateDir(dir, SOCK), a);
+});
+
+test('sessionStateDir falls back to the plain state dir when either input is missing', () => {
+  assert.equal(sessionStateDir('/tmp/state', null), '/tmp/state');
+  assert.equal(sessionStateDir('/tmp/state', undefined), '/tmp/state');
+  assert.equal(sessionStateDir(null, SOCK), null);
+  assert.equal(sessionStateDir(undefined, SOCK), undefined);
+});
 
 test('daemonAction spawns when there is no record', () => {
   assert.deepEqual(daemonAction(null, SOCK, { kill: alive }), { action: 'spawn', killPid: null });

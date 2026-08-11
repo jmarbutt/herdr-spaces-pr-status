@@ -2,13 +2,13 @@ import { spawn } from 'node:child_process';
 import { openSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readDaemon, writeDaemon, daemonAction } from '../lib/daemon-state.js';
+import { readDaemon, writeDaemon, daemonAction, sessionStateDir } from '../lib/daemon-state.js';
 
 // Runs on server start, on live handoff, and after worktree.created as a
 // self-heal. Its only job is to guarantee exactly one poller is alive and
 // bound to the current server.
 const here = dirname(fileURLToPath(import.meta.url));
-const stateDir = process.env.HERDR_PLUGIN_STATE_DIR;
+const stateDir = sessionStateDir(process.env.HERDR_PLUGIN_STATE_DIR, process.env.HERDR_SOCKET_PATH);
 const socketPath = process.env.HERDR_SOCKET_PATH ?? null;
 
 const { action, killPid } = daemonAction(readDaemon(stateDir), socketPath);

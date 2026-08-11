@@ -1,13 +1,13 @@
 import { loadConfig } from '../lib/config.js';
 import { runSync, summarize } from '../lib/run.js';
 import { subscribe } from '../lib/herdr.js';
-import { clearDaemon } from '../lib/daemon-state.js';
+import { clearDaemon, sessionStateDir } from '../lib/daemon-state.js';
 
 // The poller. Started detached by bin/startup.js, never by herdr directly.
 // Herdr's own event stream drives the interesting refreshes; the interval is
 // there for the things herdr cannot tell us about, like a CI run finishing.
 const config = loadConfig(process.env.HERDR_PLUGIN_CONFIG_DIR);
-const stateDir = process.env.HERDR_PLUGIN_STATE_DIR;
+const stateDir = sessionStateDir(process.env.HERDR_PLUGIN_STATE_DIR, process.env.HERDR_SOCKET_PATH);
 
 const EVENT_DEBOUNCE_MS = 2000;
 
