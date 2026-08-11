@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import {
   readDaemon,
   writeDaemon,
@@ -111,19 +111,22 @@ const dead = () => {
 };
 
 test('sessionStateDir namespaces per socket so sessions never share state', () => {
-  const dir = '/tmp/prstatus-state';
-  const a = sessionStateDir(dir, SOCK);
-  const b = sessionStateDir(dir, OTHER_SOCK);
-  assert.equal(a.startsWith(dir + '/'), true);
-  assert.notEqual(a, b);
-  assert.equal(sessionStateDir(dir, SOCK), a);
+  withDir((dir) => {
+    const a = sessionStateDir(dir, SOCK);
+    const b = sessionStateDir(dir, OTHER_SOCK);
+    assert.equal(dirname(a), dir, 'namespaced dir lives inside the state dir');
+    assert.notEqual(a, b, 'different sockets get different subdirs');
+    assert.equal(sessionStateDir(dir, SOCK), a, 'same socket maps to the same subdir');
+  });
 });
 
 test('sessionStateDir falls back to the plain state dir when either input is missing', () => {
-  assert.equal(sessionStateDir('/tmp/state', null), '/tmp/state');
-  assert.equal(sessionStateDir('/tmp/state', undefined), '/tmp/state');
-  assert.equal(sessionStateDir(null, SOCK), null);
-  assert.equal(sessionStateDir(undefined, SOCK), undefined);
+  withDir((dir) => {
+    assert.equal(sessionStateDir(dir, null), dir);
+    assert.equal(sessionStateDir(dir, undefined), dir);
+    assert.equal(sessionStateDir(null, SOCK), null);
+    assert.equal(sessionStateDir(undefined, SOCK), undefined);
+  });
 });
 
 test('daemonAction spawns when there is no record', () => {
