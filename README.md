@@ -9,6 +9,7 @@ grouped by where each branch actually stands.
   ● WC-10202
     wc-10202-compliance-studio…
     ● #10110 · ✓ 28/28 · approved
+    2 threads
   ○ WC-10200
     wc-10200-ultrasound-video…
     ◆ #10105 MERGED
@@ -45,6 +46,7 @@ rows = [
   ["state_icon", "workspace"],
   ["branch", "git_status"],
   ["$pr", "$pr_checks", "$pr_review"],
+  ["$pr_threads"],
 ]
 ```
 
@@ -68,6 +70,7 @@ herdr plugin action invoke jmarbutt.spaces-pr-status.refresh
 | `$pr` | `● #10110`, `◆ #10129 MERGED` | State glyph and PR number; merged, closed and draft also carry a word |
 | `$pr_checks` | `✓ 28/28`, `✗ 2/14`, `… 5/13` | Hidden once merged or closed |
 | `$pr_review` | `approved`, `changes req`, `review req` | Hidden once merged or closed |
+| `$pr_threads` | `2 threads`, `1 thread`, `0 threads` | Unresolved review threads you can resolve; hidden when unknown, merged or closed |
 | `$pr_diff` | `+914 -46` | Not in the recommended rows; add it if you want it |
 
 State glyphs, `compact` (default) and `emoji`:
@@ -102,6 +105,14 @@ A full `glyph · #number · checks · review` row is around 32 columns, so it
 truncates at the default 26. herdr auto-scales, so raising the maximum does not
 force every space wide.
 
+Thread counts include unresolved review threads that the authenticated GitHub
+user can resolve (`isResolved: false` and `viewerCanResolve: true`), including
+outdated threads. They count threads, not individual comments or review
+requests. A known empty count shows `0 threads`; a failed or incomplete lookup
+hides the count instead of claiming zero. The separate sidebar row avoids
+crowding the PR status row. Existing installations must add `["$pr_threads"]`
+to their sidebar rows to display it.
+
 Check counts exclude skipped and cancelled checks. A repo that skips 20 of 43
 workflows per PR reads as `✓ 23/23`, not `23/43`.
 
@@ -129,7 +140,8 @@ herdr plugin action invoke jmarbutt.spaces-pr-status.board
 ```
 
 Groups with nothing in them are omitted. The board renders from cached state so
-it opens instantly, then `r` refreshes.
+it opens instantly, then `r` refreshes. Active PR rows also show the resolvable thread count when
+known and space permits.
 
 ## Checks panel
 
@@ -143,6 +155,7 @@ herdr plugin action invoke jmarbutt.spaces-pr-status.checks
  WC-10207
  🟡 #10112  +372 -2
  WC-10207: Catalog: Reports module…
+ 2 resolvable threads
 
  Failed 1
  🔴 PR Gate / .NET Build         3m
@@ -162,8 +175,8 @@ herdr plugin action invoke jmarbutt.spaces-pr-status.checks
 It shows the focused space's PR, grouped by what you can act on rather than by
 provider — with a dozen checks the question is always "is anything broken, is
 anything still running", and provider grouping answers neither. It refreshes
-itself every 20 seconds while open, and costs one API call per refresh, only
-while open.
+itself every 20 seconds while open. Each refresh fetches PR/check details and
+review threads, with additional requests for thread pagination.
 
 `checksPlacement` decides where it lands:
 
@@ -265,7 +278,10 @@ the plugin works with no config file at all.
 One `gh pr list` call per repo per cycle covers every open PR. Branches that
 miss that list get one targeted query each, then are cached — merged and closed
 results for a day, "no PR" for three minutes. Nine spaces across one repo settles
-at roughly one call every 90 seconds.
+at roughly two calls every 90 seconds: the PR list and a batched GraphQL review
+thread lookup. Large thread lists require additional pages; targeted open PR
+lookups also fetch their threads. Thread lookup failures leave PR/check status
+available with the thread count unknown.
 
 ## Notifications
 
@@ -281,7 +297,7 @@ everything you already knew about.
   spaces fall back to their first pane's cwd, which is what lets an ordinary repo
   checkout show status too.
 - `git rev-parse` and `git remote get-url` give branch and repo.
-- `gh pr list` gives the PRs.
+- `gh pr list` gives the PRs; GraphQL review threads provide resolvable counts.
 - `workspace.report_metadata` writes the tokens, which
   `[ui.sidebar.spaces] rows` renders.
 
