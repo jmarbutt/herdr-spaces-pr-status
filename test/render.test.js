@@ -114,3 +114,17 @@ test('a very long space label is truncated rather than wrapping', () => {
   const out = renderPlain({ spaces: [long], width: 60, style: 'compact' });
   for (const line of out.split('\n')) assert.ok(line.length <= 62);
 });
+
+
+test('the board labels resolvable threads and preserves a known zero', () => {
+  for (const [resolvableThreads, label] of [[0, '0 resolvable threads'], [1, '1 resolvable thread'], [5, '5 resolvable threads']]) {
+    const out = renderPlain({ spaces: [entry('WC-1', pr({ resolvableThreads }))], width: 80 });
+    assert.ok(out.includes(label));
+  }
+});
+
+test('the board hides thread counts when unknown or terminal', () => {
+  for (const over of [{ resolvableThreads: null }, { resolvableThreads: 3, rolled: 'merged' }, { resolvableThreads: 3, rolled: 'closed' }]) {
+    assert.doesNotMatch(renderPlain({ spaces: [entry('WC-1', pr(over))], width: 80 }), /resolvable thread/);
+  }
+});

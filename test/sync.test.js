@@ -143,7 +143,7 @@ test('a space with no PR gets its tokens cleared, not left stale', () => {
   const { deps, calls } = harness({ resolveSpaces: () => [SPACES[0]] });
   syncOnce({ config, deps, now: NOW });
   const [, tokens] = calls.reported[0];
-  assert.deepEqual(Object.values(tokens), [null, null, null, null]);
+  assert.deepEqual(Object.values(tokens), [null, null, null, null, null]);
 });
 
 test('tokens are reported with the configured ttl so a dead daemon expires them', () => {
