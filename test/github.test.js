@@ -253,9 +253,26 @@ test('fetchOpenPrs indexes normalized PRs by branch', () => {
   assert.equal(byBranch.size, 2);
 });
 
-test('fetchOpenPrs returns an empty map when gh fails instead of throwing', () => {
-  const exec = () => ({ status: 1, stdout: '', stderr: 'gh: could not resolve repo' });
-  assert.equal(fetchOpenPrs('waycool/Missing', { exec }).size, 0);
+test('fetchOpenPrs separates a failed query from a repo with no open PRs', () => {
+  const failed = () => ({ status: 1, stdout: '', stderr: 'gh: could not resolve repo' });
+  assert.equal(fetchOpenPrs('waycool/Missing', { exec: failed }), null);
+
+  const timedOut = () => ({ status: 1, stdout: '', stderr: 'spawnSync gh ETIMEDOUT' });
+  assert.equal(fetchOpenPrs('waycool/CoolFocus', { exec: timedOut }), null);
+
+  const none = () => ({ status: 0, stdout: '[]', stderr: '' });
+  assert.equal(fetchOpenPrs('waycool/CoolFocus', { exec: none }).size, 0);
+});
+
+test('fetchBranchPr returns undefined when the query failed, null when there is no PR', () => {
+  const failed = () => ({ status: 1, stdout: '', stderr: 'spawnSync gh ETIMEDOUT' });
+  assert.equal(fetchBranchPr('waycool/CoolFocus', 'wc-1', { exec: failed }), undefined);
+
+  const unparseable = () => ({ status: 0, stdout: 'not json', stderr: '' });
+  assert.equal(fetchBranchPr('waycool/CoolFocus', 'wc-1', { exec: unparseable }), undefined);
+
+  const none = () => ({ status: 0, stdout: '[]', stderr: '' });
+  assert.equal(fetchBranchPr('waycool/CoolFocus', 'wc-1', { exec: none }), null);
 });
 
 test('fetchBranchPr returns the single match or null', () => {

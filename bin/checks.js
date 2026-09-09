@@ -44,8 +44,11 @@ function resolveSpace() {
 
 function findPr(target) {
   const ghOpts = { ghPath: config.ghPath, limit: config.openPrLimit };
-  const open = fetchOpenPrs(target.repo, ghOpts);
-  return open.get(target.branch) ?? fetchBranchPr(target.repo, target.branch, ghOpts);
+  // A failed repo query is null, not an empty map, and a failed branch query is
+  // undefined. The pane draws "no pull request" for either; it is a foreground
+  // view the user can refresh, not something to keep state about.
+  const open = fetchOpenPrs(target.repo, ghOpts) ?? new Map();
+  return open.get(target.branch) ?? fetchBranchPr(target.repo, target.branch, ghOpts) ?? null;
 }
 
 function refresh() {
