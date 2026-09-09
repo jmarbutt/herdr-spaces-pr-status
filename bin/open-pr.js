@@ -1,10 +1,11 @@
 import { loadState } from '../lib/state.js';
 import { runSync } from '../lib/run.js';
 import { openUrl } from '../lib/browser.js';
+import { sessionStateDir } from '../lib/daemon-state.js';
 
 // Opens the focused space's PR. Uses cached state when it has an answer, and
 // only syncs when it does not, so the common case is instant.
-const stateDir = process.env.HERDR_PLUGIN_STATE_DIR;
+const stateDir = sessionStateDir(process.env.HERDR_PLUGIN_STATE_DIR, process.env.HERDR_SOCKET_PATH);
 const workspaceId = process.env.HERDR_WORKSPACE_ID;
 
 if (!workspaceId) {

@@ -5,12 +5,13 @@ import { resolveSpaces } from '../lib/spaces.js';
 import { fetchPrChecks, fetchOpenPrs, fetchBranchPr } from '../lib/github.js';
 import { renderChecks } from '../lib/checks-render.js';
 import { openUrl } from '../lib/browser.js';
+import { sessionStateDir } from '../lib/daemon-state.js';
 
 // A per-space checks view. Opened as a split it is a desktop side panel; as a
 // tab it is what works on herdr's single-column mobile layout. Same process
 // either way.
 const config = loadConfig(process.env.HERDR_PLUGIN_CONFIG_DIR);
-const stateDir = process.env.HERDR_PLUGIN_STATE_DIR;
+const stateDir = sessionStateDir(process.env.HERDR_PLUGIN_STATE_DIR, process.env.HERDR_SOCKET_PATH);
 
 // The pane is launched from a workspace, and its own pane belongs to that
 // workspace, so this is the space whose checks we show.

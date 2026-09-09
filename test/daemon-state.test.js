@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import {
   readDaemon,
   writeDaemon,
@@ -10,6 +10,7 @@ import {
   daemonFile,
   isAlive,
   daemonAction,
+  sessionStateDir,
 } from '../lib/daemon-state.js';
 
 function withDir(fn) {
@@ -108,6 +109,25 @@ const dead = () => {
   err.code = 'ESRCH';
   throw err;
 };
+
+test('sessionStateDir namespaces per socket so sessions never share state', () => {
+  withDir((dir) => {
+    const a = sessionStateDir(dir, SOCK);
+    const b = sessionStateDir(dir, OTHER_SOCK);
+    assert.equal(dirname(a), dir, 'namespaced dir lives inside the state dir');
+    assert.notEqual(a, b, 'different sockets get different subdirs');
+    assert.equal(sessionStateDir(dir, SOCK), a, 'same socket maps to the same subdir');
+  });
+});
+
+test('sessionStateDir falls back to the plain state dir when either input is missing', () => {
+  withDir((dir) => {
+    assert.equal(sessionStateDir(dir, null), dir);
+    assert.equal(sessionStateDir(dir, undefined), dir);
+    assert.equal(sessionStateDir(null, SOCK), null);
+    assert.equal(sessionStateDir(undefined, SOCK), undefined);
+  });
+});
 
 test('daemonAction spawns when there is no record', () => {
   assert.deepEqual(daemonAction(null, SOCK, { kill: alive }), { action: 'spawn', killPid: null });

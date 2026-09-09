@@ -4,11 +4,12 @@ import { runSync } from '../lib/run.js';
 import { focusWorkspace } from '../lib/herdr.js';
 import { renderBoard, buildRows, selectableIndexes } from '../lib/render.js';
 import { openUrl } from '../lib/browser.js';
+import { sessionStateDir } from '../lib/daemon-state.js';
 
 // The board is a popup pane: session-modal, receives every key including
 // Escape, and closes when this process exits.
 const config = loadConfig(process.env.HERDR_PLUGIN_CONFIG_DIR);
-const stateDir = process.env.HERDR_PLUGIN_STATE_DIR;
+const stateDir = sessionStateDir(process.env.HERDR_PLUGIN_STATE_DIR, process.env.HERDR_SOCKET_PATH);
 
 const ESC = '\u001b';
 const ALT_SCREEN_ON = `${ESC}[?1049h`;
