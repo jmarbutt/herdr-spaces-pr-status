@@ -143,7 +143,72 @@ test('a space with no PR gets its tokens cleared, not left stale', () => {
   const { deps, calls } = harness({ resolveSpaces: () => [SPACES[0]] });
   syncOnce({ config, deps, now: NOW });
   const [, tokens] = calls.reported[0];
-  assert.deepEqual(Object.values(tokens), [null, null, null, null]);
+  assert.deepEqual(Object.values(tokens), [null, null, null, null, null]);
+});
+
+test('a failed repo query does not fan out into a query per branch', () => {
+  const { deps, calls } = harness({ fetchOpenPrs: () => null });
+  const res = syncOnce({ config, deps, now: NOW });
+  assert.equal(res.ok, true);
+  assert.deepEqual(calls.branchPrs, [], 'no targeted query on a connection that just failed');
+  assert.equal(res.stats.failed, 3);
+});
+
+test('a failed repo query reports nothing, so the token ttl blanks the space', () => {
+  const { deps, calls } = harness({ fetchOpenPrs: () => null });
+  const res = syncOnce({ config, deps, now: NOW });
+  assert.deepEqual(calls.reported, [], 'an unanswered space is neither refreshed nor cleared');
+  assert.equal(res.stats.reported, 0);
+});
+
+test('a failed repo query does not cache "no PR" for the branches it never asked about', () => {
+  const { deps } = harness({ fetchOpenPrs: () => null });
+  const failed = syncOnce({ config, deps, now: NOW });
+  assert.deepEqual(failed.state.cache, {}, 'a failure is not an answer worth remembering');
+
+  // The next cycle must be free to ask again rather than serving the blank.
+  const back = harness({ fetchOpenPrs: () => new Map([['wc-10200', openPr(1, 'wc-10200')]]) });
+  const recovered = syncOnce({ config, deps: back.deps, state: failed.state, now: NOW + 1000 });
+  assert.equal(recovered.stats.cacheHits, 0);
+  assert.equal(recovered.state.spaces.w69.pr.number, 1);
+});
+
+test('an unanswered space keeps its last known PR as a notification baseline', () => {
+  const red = openPr(1, 'wc-10200', {
+    statusCheckRollup: [{ __typename: 'CheckRun', status: 'COMPLETED', conclusion: 'FAILURE' }],
+  });
+  const first = syncOnce({
+    config,
+    deps: harness({ resolveSpaces: () => [SPACES[0]], fetchOpenPrs: () => new Map([['wc-10200', red]]) }).deps,
+    now: NOW,
+    firstCycle: true,
+  });
+
+  const outage = syncOnce({
+    config,
+    deps: harness({ resolveSpaces: () => [SPACES[0]], fetchOpenPrs: () => null }).deps,
+    state: first.state,
+    now: NOW + 1000,
+  });
+  assert.equal(outage.state.spaces.w69.pr.number, 1, 'baseline survives the outage');
+
+  // Without the baseline the same failing checks would toast again on recovery.
+  const after = harness({ resolveSpaces: () => [SPACES[0]], fetchOpenPrs: () => new Map([['wc-10200', red]]) });
+  const recovered = syncOnce({ config, deps: after.deps, state: outage.state, now: NOW + 2000 });
+  assert.deepEqual(recovered.notifications, [], 'no re-toast for a transition already announced');
+});
+
+test('a failed branch query leaves the space unanswered instead of inventing "no PR"', () => {
+  const { deps, calls } = harness({
+    resolveSpaces: () => [SPACES[1]],
+    fetchOpenPrs: () => new Map(),
+    fetchBranchPr: () => undefined,
+  });
+  const res = syncOnce({ config, deps, now: NOW });
+  assert.equal(res.stats.branchQueries, 1);
+  assert.equal(res.stats.failed, 1);
+  assert.deepEqual(calls.reported, []);
+  assert.deepEqual(res.state.cache, {});
 });
 
 test('tokens are reported with the configured ttl so a dead daemon expires them', () => {

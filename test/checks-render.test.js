@@ -178,3 +178,19 @@ test('the checks panel header labels a merged PR the same way the sidebar does',
   assert.match(renderChecksPlain({ space, pr: merged, checks: [], width: 40 }), /#10112 MERGED/);
   assert.match(renderChecksPlain({ space, pr, checks: [], width: 40 }), /#10112 {2}\+/);
 });
+
+
+test('the checks pane labels resolvable threads, including zero', () => {
+  for (const [resolvableThreads, label] of [[0, '0 resolvable threads'], [1, '1 resolvable thread'], [8, '8 resolvable threads']]) {
+    const out = renderChecksPlain({ space, pr: { ...pr, resolvableThreads }, width: 32 });
+    assert.ok(out.includes(label));
+    const line = out.split('\n').find((line) => line.includes('resolvable'));
+    assert.ok(displayWidth(line) <= 32);
+  }
+});
+
+test('the checks pane hides unknown and terminal thread counts', () => {
+  for (const over of [{ resolvableThreads: null }, { resolvableThreads: 3, rolled: 'merged' }, { resolvableThreads: 3, rolled: 'closed' }]) {
+    assert.doesNotMatch(renderChecksPlain({ space, pr: { ...pr, ...over } }), /resolvable thread/);
+  }
+});
