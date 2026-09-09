@@ -8,6 +8,8 @@ import {
   normalizePr,
   prListArgs,
   fetchOpenPrs,
+  fetchResolvableThreads,
+  fetchPrChecks,
   fetchBranchPr,
 } from '../lib/github.js';
 
@@ -295,4 +297,76 @@ test('fetchBranchPr uses the configured gh path', () => {
   };
   fetchBranchPr('o/n', 'b', { exec, ghPath: '/opt/homebrew/bin/gh' });
   assert.equal(seen, '/opt/homebrew/bin/gh');
+});
+
+const thread = (isResolved = false, viewerCanResolve = true) => ({ isResolved, viewerCanResolve });
+const page = (nodes, endCursor = null) => ({
+  reviewThreads: { nodes, pageInfo: { hasNextPage: endCursor !== null, endCursor } },
+});
+const response = (repository) => ({ status: 0, stdout: JSON.stringify({ data: { repository } }), stderr: '' });
+
+test('thread counts batch PRs and count only unresolved threads the viewer can resolve', () => {
+  const calls = [];
+  const exec = (cmd, args) => {
+    calls.push({ cmd, args });
+    return response({ pr1: page([thread(), thread(true), thread(false, false), { ...thread(), isOutdated: true }]), pr2: page([]) });
+  };
+  const counts = fetchResolvableThreads('github.example.com/o/n', [1, 2], { exec, ghPath: '/custom/gh' });
+  assert.deepEqual([...counts], [[1, 2], [2, 0]]);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].cmd, '/custom/gh');
+  assert.match(calls[0].args.join(' '), /pr1: pullRequest/);
+  assert.match(calls[0].args.join(' '), /pr2: pullRequest/);
+  assert.ok(calls[0].args.includes('github.example.com'));
+});
+
+test('thread counts follow independent cursors past 100 threads', () => {
+  let calls = 0;
+  const exec = (cmd, args) => {
+    calls++;
+    if (calls === 1) return response({ pr1: page(Array.from({ length: 100 }, () => thread()), 'next-page'), pr2: page([thread()]) });
+    const query = args.find((arg) => arg.startsWith('query='));
+    assert.match(query, /after: "next-page"/);
+    assert.doesNotMatch(query, /pr2:/);
+    return response({ pr1: page([thread(), thread(true)]) });
+  };
+  assert.deepEqual([...fetchResolvableThreads('o/n', [1, 2], { exec })], [[1, 101], [2, 1]]);
+  assert.equal(calls, 2);
+});
+
+test('thread query failures and incomplete pages stay unknown, preserving completed PR counts', () => {
+  for (const failure of [
+    { status: 1, stdout: '', stderr: 'offline' },
+    { status: 0, stdout: 'invalid json', stderr: '' },
+    { status: 0, stdout: JSON.stringify({ errors: [{ message: 'denied' }] }), stderr: '' },
+    response({ pr1: page([thread()], 'next') }),
+    response({ pr1: { reviewThreads: { nodes: [] } } }),
+    response({ pr1: page([null]) }),
+  ]) {
+    let calls = 0;
+    const exec = () => ++calls === 1 ? response({ pr1: page([thread()], 'next'), pr2: page([]) }) : failure;
+    assert.deepEqual([...fetchResolvableThreads('o/n', [1, 2], { exec })], [[1, null], [2, 0]]);
+    assert.equal(calls, 2);
+  }
+});
+
+test('empty and terminal PR lists do not fetch threads', () => {
+  assert.equal(fetchResolvableThreads('o/n', [], { exec: () => assert.fail('unexpected call') }).size, 0);
+  let calls = 0;
+  const exec = () => {
+    calls++;
+    return { status: 0, stdout: JSON.stringify([{ number: 1, headRefName: 'x', state: 'MERGED' }]), stderr: '' };
+  };
+  assert.equal(fetchBranchPr('o/n', 'x', { exec }).resolvableThreads, null);
+  assert.equal(calls, 1);
+});
+
+test('all PR fetch paths attach thread counts without losing check status', () => {
+  const raw = { number: 1, headRefName: 'x', state: 'OPEN', statusCheckRollup: [{ __typename: 'StatusContext', state: 'SUCCESS' }] };
+  const exec = (cmd, args) => args[0] === 'api' ? response({ pr1: page([thread()]) }) :
+    { status: 0, stdout: JSON.stringify(args[1] === 'view' ? raw : [raw]), stderr: '' };
+  for (const pr of [fetchOpenPrs('o/n', { exec }).get('x'), fetchBranchPr('o/n', 'x', { exec }), fetchPrChecks('o/n', 1, { exec }).pr]) {
+    assert.equal(pr.resolvableThreads, 1);
+    assert.equal(pr.checks.state, 'pass');
+  }
 });

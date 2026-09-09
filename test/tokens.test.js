@@ -131,7 +131,7 @@ test('token values contain no control characters', () => {
 });
 
 test('token keys match the documented names so config rows stay stable', () => {
-  assert.deepEqual([...TOKEN_KEYS], ['pr', 'pr_checks', 'pr_review', 'pr_diff']);
+  assert.deepEqual([...TOKEN_KEYS], ['pr', 'pr_checks', 'pr_review', 'pr_diff', 'pr_threads']);
 });
 
 test('a merged PR says so, because the glyph alone does not', () => {
@@ -155,4 +155,18 @@ test('labels appear in both styles', () => {
   for (const style of ['emoji', 'compact']) {
     assert.match(prTokens(pr({ state: 'MERGED', rolled: 'merged' }), style).pr, /MERGED/);
   }
+});
+
+
+test('thread tokens distinguish known zero, singular, plural and unknown counts', () => {
+  for (const [resolvableThreads, expected] of [[0, '0 threads'], [1, '1 thread'], [12, '12 threads'], [null, null], [undefined, null]]) {
+    assert.equal(prTokens(pr({ resolvableThreads })).pr_threads, expected);
+  }
+});
+
+test('thread tokens clear for terminal PRs and spaces without a PR', () => {
+  for (const rolled of ['merged', 'closed']) {
+    assert.equal(prTokens(pr({ rolled, resolvableThreads: 4 })).pr_threads, null);
+  }
+  assert.equal(clearedTokens().pr_threads, null);
 });
